@@ -348,9 +348,19 @@ case $BUILDER in
 
 			prevbranch=$(git rev-parse --abbrev-ref HEAD)
 			
+			# Get the tito release number
+			versionrelease=0
+			spec_packages=$(rpm -q --queryformat="%{name} " --specfile *.spec)
+			for pkg in $spec_packages
+			do
+				if [ -f rel-eng/packages/${pkg} ]; then
+					versionrelease=$(awk -F'[ -]' '{ print $2}' rel-eng/packages/${pkg})
+				fi
+			done
+
 			echo ":::::"
 			echo "::::: spec based on tito version with tag $prevbranch"
-			echo "::::: with release suffix: 0.$versionsnapsuffix"
+			echo "::::: with release suffix: $versionrelease.$versionsnapsuffix"
 			echo ":::::"
 
 			git checkout -b tmp-build
@@ -364,7 +374,7 @@ case $BUILDER in
 			#for file in *.spec.tmp-build ; do mv $file ${file%.tmp-build} ; done
 
 			#sed -r -i -e '/^Release:/s/\s*$/'".$versionsnapsuffix/" *.spec
-			sed -r -i -e '/^Release:/s/^.*$/Release: '"0.$versionsnapsuffix/" *.spec
+			sed -r -i -e '/^Release:/s/^.*$/Release: '"$versionrelease.$versionsnapsuffix/" *.spec
 			
 			tito tag --keep-version --no-auto-changelog
 			
@@ -374,7 +384,7 @@ case $BUILDER in
 			git checkout -- *.spec
 			git checkout $prevbranch
 			git branch -D tmp-build
-			git tag -d $name-$(rpm -q --queryformat="%{version}\n" --specfile *.spec | head -n 1 | awk '{print $1}')-0.$versionsnapsuffix
+			git tag -d $name-$(rpm -q --queryformat="%{version}\n" --specfile *.spec | head -n 1 | awk '{print $1}')-$versionrelease.$versionsnapsuffix
 		else
 			echo ":::::"
 			echo "::::: building nosnap with tito"
